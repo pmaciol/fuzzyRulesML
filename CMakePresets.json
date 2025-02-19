@@ -1,0 +1,49 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "gcc13_debug",
+            "displayName": "gcc13 toolchain, Debug, Ninja",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "toolchainFile": "${sourceDir}/cmake/gcc13-toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "binaryDir": "${sourceDir}/build_gcc13"
+        },
+        {
+            "name": "gcc14_debug",
+            "displayName": "gcc14 toolchain, Debug, Ninja",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "toolchainFile": "${sourceDir}/cmake/gcc14-toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "binaryDir": "${sourceDir}/build_gcc14"
+        },
+        {
+            "name": "clang18_debug",
+            "displayName": "clang18 toolchain, Debug, Ninja",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "toolchainFile": "${sourceDir}/cmake/clang-toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug"
+            },
+            "binaryDir": "${sourceDir}/build_clang18"
+        },
+        {
+            "name": "clang18_release",
+            "displayName": "clang18 toolchain, Release, Ninja",
+            "description": "Sets Ninja generator, build and install directory",
+            "generator": "Ninja",
+            "toolchainFile": "${sourceDir}/cmake/clang-toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release"
+            },
+            "binaryDir": "${sourceDir}/build_clang18"
+        }
+    ]
+}
