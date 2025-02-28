@@ -4,10 +4,8 @@
 #include "lib/reasoner.hpp"
 #include "lib/rules.hpp"
 #include <CLI/CLI.hpp>
-#include <fstream>
 #include <string>
 #include <tuple>
-#include <vector>
 
 namespace fd = fuzzyrulesml::data;
 namespace fru = fuzzyrulesml::rules;
@@ -32,17 +30,16 @@ auto get_rules_set(std::vector<double> v1) {
     auto petal_width =
         rules_set.add_input_variable<double>("petal_width", fru::initial_distribution::Uniform(0.1, 2.5, 2));
     return std::tuple{rules_set, sepal_length, sepal_width, petal_length, petal_width};
-  } else {
-    auto sepal_length =
-        rules_set.add_input_variable<double>("sepal_length", fru::initial_distribution::Uniform(v1[0], v1[1], 2));
-    auto sepal_width =
-        rules_set.add_input_variable<double>("sepal_width", fru::initial_distribution::Uniform(v1[2], v1[3], 2));
-    auto petal_length =
-        rules_set.add_input_variable<double>("petal_length", fru::initial_distribution::Uniform(v1[4], v1[5], 2));
-    auto petal_width =
-        rules_set.add_input_variable<double>("petal_width", fru::initial_distribution::Uniform(v1[6], v1[7], 2));
-    return std::tuple{rules_set, sepal_length, sepal_width, petal_length, petal_width};
-  }
+  };
+  auto sepal_length =
+      rules_set.add_input_variable<double>("sepal_length", fru::initial_distribution::Uniform(v1[0], v1[1], 2));
+  auto sepal_width =
+      rules_set.add_input_variable<double>("sepal_width", fru::initial_distribution::Uniform(v1[2], v1[3], 2));
+  auto petal_length =
+      rules_set.add_input_variable<double>("petal_length", fru::initial_distribution::Uniform(v1[4], v1[5], 2));
+  auto petal_width =
+      rules_set.add_input_variable<double>("petal_width", fru::initial_distribution::Uniform(v1[6], v1[7], 2));
+  return std::tuple{rules_set, sepal_length, sepal_width, petal_length, petal_width};
 }
 
 auto main(int argc, char **argv) -> int {
@@ -63,13 +60,19 @@ auto main(int argc, char **argv) -> int {
   CLI11_PARSE(app, argc, argv);
 
   auto [rules_set, sepal_length, sepal_width, petal_length, petal_width] = get_rules_set(v1);
-  const auto iris_type = std::vector<std::string>{"Iris-setosa", "Iris-versicolor", "Iris-virginica"};
-  const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
+  const auto output_variable =
+      rules_set.add_output_variable("iris_type", {"Iris-setosa", "Iris-versicolor", "Iris-virginica"});
 
+  // NOLINTBEGIN(bugprone-easily-swappable-parameters)
   auto add_rule = [&rules_set, sepal_length, sepal_width, petal_length, petal_width,
-                   output_variable](size_t sl, size_t sw, size_t pl, size_t pw, size_t ot) {
-    rules_set.add_rule({{sepal_length, sl}, {sepal_width, sw}, {petal_length, pl}, {petal_width, pw}},
-                       output_variable[ot]);
+                   output_variable](size_t sepal_lenght_val, size_t sepal_width_val, size_t petal_length_val,
+                                    size_t petal_width_val, size_t output_val) {
+    // NOLINTEND(bugprone-easily-swappable-parameters)
+    rules_set.add_rule({{sepal_length, sepal_lenght_val},
+                        {sepal_width, sepal_width_val},
+                        {petal_length, petal_length_val},
+                        {petal_width, petal_width_val}},
+                       output_variable[output_val]);
   };
 
   add_rule(small, small, small, small, setosa);     // 1
@@ -89,13 +92,15 @@ auto main(int argc, char **argv) -> int {
   add_rule(large, large, large, small, versicolor); // 15
   add_rule(large, large, large, large, virginica);  // 16
 
-  fre::SimpleReasoner reasoner;
-  reasoner.add_rules(rules_set);
+  fre::SimpleReasoner reasoner{rules_set};
   const auto [features, targets] = fdd::load_data(input_file, target_file);
 
   if (!train) {
-    fdd::DataSet data_set1(features, targets);
-    const auto test_data = data_set1.get_items(sepal_length, sepal_width, petal_length, petal_width);
+    fdd::DataSet data_set(features, targets);
+    // const auto test_data = data_set.get_items(sepal_length, sepal_width, petal_length, petal_width);
+    const auto test_data =
+        data_set.get_items(std::pair{"sepal length", sepal_length}, std::pair{"sepal width", sepal_width},
+                           std::pair{"petal length", petal_length}, std::pair{"petal width", petal_width});
     if (print) {
       fdd::print(test_data);
     }
@@ -105,8 +110,8 @@ auto main(int argc, char **argv) -> int {
     const auto lower_bounds = Eigen::Matrix<double, 8, 1>(0.0, 7.9, 0.0, 4.4, 0.0, 6.9, -1.0, 2.5);
     const auto upper_bounds = Eigen::Matrix<double, 8, 1>(4.3, 15.0, 2.0, 15.0, 1.0, 15.0, 0.1, 15.0);
 
-    fdd::DataSet data_set1(features, targets);
-    auto dataset_opt_fn = [sepal_length, sepal_width, petal_length, petal_width, &reasoner, &data_set1, lower_bounds,
+    fdd::DataSet data_set(features, targets);
+    auto dataset_opt_fn = [sepal_length, sepal_width, petal_length, petal_width, &reasoner, &data_set, lower_bounds,
                            upper_bounds, print](const Eigen::VectorXd local_vals_inp, Eigen::VectorXd *, void *) {
       auto local_reasoner = reasoner;
       sepal_length.set_points(std::vector<double>{local_vals_inp(0), local_vals_inp(1)});
@@ -114,7 +119,9 @@ auto main(int argc, char **argv) -> int {
       petal_length.set_points(std::vector<double>{local_vals_inp(4), local_vals_inp(5)});
       petal_width.set_points(std::vector<double>{local_vals_inp(6), local_vals_inp(7)});
 
-      const auto test_data = data_set1.get_items(sepal_length, sepal_width, petal_length, petal_width);
+      const auto test_data =
+          data_set.get_items(std::pair{"sepal length", sepal_length}, std::pair{"sepal width", sepal_width},
+                             std::pair{"petal length", petal_length}, std::pair{"petal width", petal_width});
       if (print)
         fdd::print(test_data);
       static double gfunc = double(test_data.size());

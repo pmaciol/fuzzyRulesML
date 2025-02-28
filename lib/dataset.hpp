@@ -1,52 +1,70 @@
 #pragma once
 #include "rules.hpp"
+#include <fstream>
 #include <map>
 #include <nlohmann/json.hpp>
 #include <print>
 #include <ranges>
 #include <vector>
-#include <fstream>
 
 namespace fuzzyrulesml::dataset {
 class DataSet {
 public:
-  using Output = std::vector<
-      std::pair<std::map<fuzzyrulesml::rules::VariableContainer, fuzzyrulesml::rules::ValuesContainer>, std::string>>;
+  using RulesValuesContainer = std::vector<std::pair<fuzzyrulesml::rules::RuleTestingValues, std::string>>;
+  using DatasetFeatures = std::map<std::string, double>;
+  using DatasetTarget = std::string;
+  using DatasetItem = std::pair<DatasetFeatures, DatasetTarget>;
 
   DataSet(nlohmann::json x_data, nlohmann::json y_data) {
     for (auto [x_item, y_item] : std::ranges::views::zip(x_data.items(), y_data.items())) {
-      nlohmann::json x_object = x_item.value();
-      nlohmann::json y_object = y_item.value();
-      // for (const auto& [key, value] : x_object.get<std::map<std::string, double>>()) {
-      //   std::print("test read {}: {} \t", key, value);
-      // }
-      // std::print("{}\n", y_object.dump());
-      data.emplace_back(std::pair(x_object.get<std::map<std::string, double>>(), y_object["class"].get<std::string>()));
+      const nlohmann::json x_object = x_item.value();
+      const nlohmann::json y_object = y_item.value();
+      data.emplace_back(x_object.get<DatasetFeatures>(), y_object.at("class").get<DatasetTarget>());
     }
   };
 
-  template <typename T1, typename T2, typename T3, typename T4>
-  auto get_items(const T1& t1, const T2& t2, const T3& t3, const T4& t4) {
-    std::vector<
-        std::pair<std::map<fuzzyrulesml::rules::VariableContainer, fuzzyrulesml::rules::ValuesContainer>, std::string>>
-        to_ret;
+  auto get_variables_names() const {
+    std::vector<std::string> to_ret;
     for (const auto& [x, y] : data) {
-      to_ret.emplace_back(
-          std::map<fuzzyrulesml::rules::VariableContainer, fuzzyrulesml::rules::ValuesContainer>{
-              {t1, x.at("sepal length")},
-              {t2, x.at("sepal width")},
-              {t3, x.at("petal length")},
-              {t4, x.at("petal width")}},
-          y);
+      for (const auto& [key, value] : x) {
+        if (std::ranges::find(to_ret, key) == to_ret.end()) {
+          to_ret.push_back(key);
+        }
+      }
     }
     return to_ret;
   }
 
+  template <typename... Targs>
+  auto get_internal_items(auto item, auto variable_name_itself,
+                          Targs... Fargs)
+  {
+    const auto [name, variable] = variable_name_itself;
+    auto partial_map = get_internal_items(item, Fargs...);
+    partial_map.emplace(variable, item.at(name));
+    return partial_map;
+  };
+
+  auto get_internal_items(auto item, auto variable_name_itself)
+  {
+    const auto [name, variable] = variable_name_itself;
+    return fuzzyrulesml::rules::RuleTestingValues{{variable, item.at(name)}};
+  };
+
+  template <typename... Targs> auto get_items(Targs... Fargs) {
+    RulesValuesContainer to_ret;
+    for (const auto& [item, y] : data) {
+      auto rule_testing_values = get_internal_items(item, Fargs...);
+      to_ret.emplace_back(rule_testing_values, y);
+    }
+    return to_ret;
+  };
+
 private:
-  std::vector<std::pair<std::map<std::string, double>, std::string>> data;
+  std::vector<DatasetItem> data;
 };
 
-void print(const DataSet::Output& data) {
+void print(const DataSet::RulesValuesContainer& data) {
   std::print("------------------------- Printing dataset -------------------------\n");
   auto i = 1;
   for (const auto& [x, y] : data) {

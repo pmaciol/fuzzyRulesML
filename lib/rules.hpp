@@ -10,17 +10,19 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
+#include <map>
 
 namespace fuzzyrulesml::rules {
-using OutputVariableContainer = Variable<std::string>;
+using OutputVariableContainer = FuzzyVariable<std::string>;
 
-using VariableContainer = std::variant<Variable<double>, Variable<std::string>>;
-using VariableValuedContainer = std::variant<ValuedVariable<Variable<double>>, ValuedVariable<Variable<std::string>>>;
+using FuzzyVariableU = std::variant<FuzzyVariable<double>, FuzzyVariable<std::string>>;
+using FuzzyValueU = std::variant<FuzzyValue<FuzzyVariable<double>>, FuzzyValue<FuzzyVariable<std::string>>>;
 using Conclusion = std::string;
-using Rule = std::pair<std::map<VariableContainer, std::size_t>, Conclusion>;
+using Rule = std::pair<std::map<FuzzyVariableU, std::size_t>, Conclusion>;
+using RuleTestingValues = std::map<fuzzyrulesml::rules::FuzzyVariableU, fuzzyrulesml::rules::CrispValuesU>;
 
-inline auto all_variables_match(const std::multimap<VariableContainer, std::size_t>& variables_map,
-                                const std::map<VariableContainer, std::size_t>& preconditions) -> bool {
+inline auto all_variables_match(const std::multimap<FuzzyVariableU, std::size_t>& variables_map,
+                                const std::map<FuzzyVariableU, std::size_t>& preconditions) -> bool {
   return (std::ranges::all_of(preconditions, [&variables_map](const auto& variable_index_pair) {
     return (std::ranges::any_of(variables_map, [variable_index_pair](const auto& query_variable_index_pair) {
       return variable_index_pair == query_variable_index_pair;
@@ -28,32 +30,32 @@ inline auto all_variables_match(const std::multimap<VariableContainer, std::size
   }));
 }
 
-auto to_string(const VariableContainer& variable_container) -> std::string {
+inline auto to_string(const FuzzyVariableU& variable_container) -> std::string {
   return std::visit([](const auto& var) { return var.get_name(); }, variable_container);
 }
 
 class RulesSet {
 public:
   template <typename VARIABLE_TYPE>
-  auto add_input_variable(std::string_view name, initial_distribution::Uniform dist) -> Variable<VARIABLE_TYPE>;
+  auto add_input_variable(std::string_view name, initial_distribution::Uniform dist) -> FuzzyVariable<VARIABLE_TYPE>;
 
-  template <typename VARIABLE_TYPE> auto get_input_variable(std::string_view name) -> Variable<VARIABLE_TYPE>;
+  template <typename VARIABLE_TYPE> auto get_input_variable(std::string_view name) -> FuzzyVariable<VARIABLE_TYPE>;
 
   auto add_output_variable(std::string_view name, std::vector<std::string> categories) -> std::vector<std::string>;
 
-  void add_rule(const std::map<VariableContainer, std::size_t>& variables_map, const Conclusion& conclusion) {
+  void add_rule(const std::map<FuzzyVariableU, std::size_t>& variables_map, const Conclusion& conclusion) {
     rules.emplace_back(std::pair{variables_map, conclusion});
   }
 
-  auto get_rules(const std::multimap<VariableContainer, std::size_t>& variables_map) -> std::vector<Rule> {
+  auto get_rules(const std::multimap<FuzzyVariableU, std::size_t>& variables_map) -> std::vector<Rule> {
     return rules | std::views::filter([&variables_map](const auto& rule) {
              return all_variables_match(variables_map, rule.first);
            }) |
            std::ranges::to<std::vector<Rule>>();
   }
 
-  auto get_rules(const std::map<VariableContainer, ValuesContainer>& variables_map) -> std::vector<Rule> {
-      std::multimap<VariableContainer, std::size_t> output_map;
+  auto get_rules(const std::map<FuzzyVariableU, CrispValuesU>& variables_map) -> std::vector<Rule> {
+      std::multimap<FuzzyVariableU, std::size_t> output_map;
     for (const auto& variable : variables_map) {
       const Membership memberships = std::visit([val = variable.second](const auto& var) { 
         return var.operator()(val).get_membership(); }, variable.first);
@@ -71,7 +73,7 @@ public:
   [[nodiscard]] inline auto get_input_variables_labels() const -> std::vector<std::string>;
 
 private:
-  std::set<VariableContainer> input_variables;
+  std::set<FuzzyVariableU> input_variables;
   std::map<std::string, std::vector<std::string>> output_variables;
   std::vector<Rule> rules;
 };
@@ -85,27 +87,27 @@ inline auto RulesSet::get_input_variables_labels() const -> std::vector<std::str
 
 template <typename VARIABLE_TYPE>
 auto RulesSet::add_input_variable(std::string_view variable_name,
-                                  initial_distribution::Uniform distribution) -> Variable<VARIABLE_TYPE> {
+                                  initial_distribution::Uniform distribution) -> FuzzyVariable<VARIABLE_TYPE> {
   const auto found = std::ranges::find(input_variables, variable_name, [](auto const& variable) {
     return std::visit([](const auto& var) { return var.get_name(); }, variable);
   });
   if (found != input_variables.end()) {
     throw std::runtime_error("Input variable already exists");
   }
-  auto created_variable = Variable<VARIABLE_TYPE>(variable_name, distribution);
+  auto created_variable = FuzzyVariable<VARIABLE_TYPE>(variable_name, distribution);
   input_variables.emplace(created_variable);
   return created_variable;
 }
 
 template <typename VARIABLE_TYPE>
-auto RulesSet::get_input_variable(std::string_view variable_name) -> Variable<VARIABLE_TYPE> {
+auto RulesSet::get_input_variable(std::string_view variable_name) -> FuzzyVariable<VARIABLE_TYPE> {
   const auto found = std::ranges::find(input_variables, variable_name, [](auto const& variable) {
     return std::visit([](const auto& var) { return var.get_name(); }, variable);
   });
   if (found == input_variables.end()) {
     throw std::runtime_error("Variable not found");
   }
-  return std::get<Variable<VARIABLE_TYPE>>(*found);
+  return std::get<FuzzyVariable<VARIABLE_TYPE>>(*found);
 }
 
 inline auto RulesSet::add_output_variable(std::string_view variable_name,

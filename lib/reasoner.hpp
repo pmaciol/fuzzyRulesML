@@ -7,32 +7,35 @@
 namespace fuzzyrulesml::reasoner {
 class fuzzyLiteReasoner {};
 
-
 auto calculate_one(const auto test_data, auto& reasoner, const auto print) {
   double goal_func{0.0};
-  if (print) {std::print("------------------------- Printing all results -------------------------\n");  }
-  [[maybe_unused]] auto i=1;
+  if (print) {
+    std::print("------------------------- Printing all results -------------------------\n");
+  }
+  [[maybe_unused]] auto i = 1;
   for (const auto& [state, results] : test_data) {
     const auto reasoning_result = reasoner.do_reasoning(state);
     const auto biggest_val =
         std::ranges::max_element(reasoning_result, [](const auto& x, const auto& y) { return x.second < y.second; });
-        
+
     if (print) {
-      std::print("[{}]\t Match: {:6}\t Expected: {:20}\t inferred: {}\n", i++, results == biggest_val->first, results, biggest_val->first);
+      std::print("[{}]\t Match: {:6}\t Expected: {:20}\t inferred: {}\n", i++, results == biggest_val->first, results,
+                 biggest_val->first);
     }
     if (results == biggest_val->first) {
       goal_func += 1.0;
     }
   }
-  if (print) std::print("------------------------- End of results -------------------------\n");
+  if (print)
+    std::print("------------------------- End of results -------------------------\n");
   return goal_func;
 }
 
 class SimpleReasoner {
 public:
-  void add_rules(const fuzzyrulesml::rules::RulesSet& rules) { stored_rules = rules; };
-  auto do_reasoning(const std::map<fuzzyrulesml::rules::VariableContainer, fuzzyrulesml::rules::ValuesContainer>&
-                        variables_map) -> std::map<fuzzyrulesml::rules::Conclusion, double> {
+  SimpleReasoner(const fuzzyrulesml::rules::RulesSet& rules) : stored_rules{rules} {};
+  auto do_reasoning(const fuzzyrulesml::rules::RuleTestingValues& variables_map)
+      -> std::map<fuzzyrulesml::rules::Conclusion, double> {
     const auto usefeul_rules = stored_rules.get_rules(variables_map);
     std::multimap<fuzzyrulesml::rules::Conclusion, double> conclusions;
     for (const auto& rule : usefeul_rules) {
@@ -48,10 +51,9 @@ public:
   //                                                                                 };
 
 private:
-  auto evaluate_rule(const std::map<fuzzyrulesml::rules::VariableContainer, std::size_t>& rule_variables,
-                     const std::map<fuzzyrulesml::rules::VariableContainer, fuzzyrulesml::rules::ValuesContainer>&
-                         variables_map) -> double {
-    std::map<std::pair<fuzzyrulesml::rules::VariableContainer, std::size_t>, double> rule_memberships{};
+  auto evaluate_rule(const std::map<fuzzyrulesml::rules::FuzzyVariableU, std::size_t>& rule_variables,
+                     const fuzzyrulesml::rules::RuleTestingValues& variables_map) -> double {
+    std::map<std::pair<fuzzyrulesml::rules::FuzzyVariableU, std::size_t>, double> rule_memberships{};
     for (const auto& variable : rule_variables) {
       rule_memberships[variable] = 0.0;
     }
