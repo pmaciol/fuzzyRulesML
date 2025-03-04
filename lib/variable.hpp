@@ -1,6 +1,7 @@
 #pragma once
 
 #include "membership_functions.hpp"
+#include <format>
 #include <map>
 #include <print>
 #include <set>
@@ -10,28 +11,27 @@
 #include <unordered_map>
 #include <variant>
 #include <vector>
-#include <format>
 
 namespace fuzzyrulesml::rules {
-using CrispValuesU = std::variant<double, std::string>;
+using CrispValuesUnion = std::variant<double, int>;
 
-inline auto to_string(const CrispValuesU& value_container) -> std::string {
+inline auto to_string(const CrispValuesUnion& value_container) -> std::string {
   return std::visit([](const auto& var) { return std::format("{}", var); }, value_container);
 }
 
-
 namespace initial_distribution {
-class Uniform {
+template <typename UNDERLYING_TYPE = double> class Uniform {
 public:
-  Uniform(double min, double max, int categories) : min(min), max(max), categories(categories) {}
-  auto get_categories() const -> int { return categories; }
+  using UnderlyingType = UNDERLYING_TYPE;
+  Uniform(UnderlyingType min, UnderlyingType max, int categories) : min(min), max(max), categories(categories) {}
+  [[nodiscard]] auto get_categories() const -> int { return categories; }
   // auto get_membership(double value) const -> std::map<int, double> { return std::map<int, double>{{0, 1.0}}; }
-  auto get_min() const -> double { return min; }
-  auto get_max() const -> double { return max; }
+  [[nodiscard]] auto get_min() const -> UnderlyingType { return min; }
+  [[nodiscard]] auto get_max() const -> UnderlyingType { return max; }
 
 private:
-  double min;
-  double max;
+  UnderlyingType min;
+  UnderlyingType max;
   int categories;
 };
 } // namespace initial_distribution
@@ -41,15 +41,16 @@ using Membership = std::map<int, double>;
 template <typename UNDERLYING_TYPE> class FuzzyVariable {
 public:
   using UnderlyingType = UNDERLYING_TYPE;
-  FuzzyVariable(std::string_view name, const initial_distribution::Uniform& distribution);
+  FuzzyVariable(std::string_view name, const initial_distribution::Uniform<UnderlyingType>& distribution);
   ~FuzzyVariable() = default;
   FuzzyVariable(const FuzzyVariable& other) : name(other.name), distribution{other.distribution} {}
-  FuzzyVariable(FuzzyVariable&& other) noexcept : name(std::move(other.name)), distribution(std::move(other.distribution)) {}
+  FuzzyVariable(FuzzyVariable&& other) noexcept
+      : name(std::move(other.name)), distribution(std::move(other.distribution)) {}
 
   auto operator=(const FuzzyVariable& other) -> FuzzyVariable&;
   auto operator=(FuzzyVariable&& other) noexcept -> FuzzyVariable&;
-  auto operator()(const UnderlyingType& value) const -> FuzzyValue<FuzzyVariable<UnderlyingType>>;
-  auto operator()(const CrispValuesU& value) const -> FuzzyValue<FuzzyVariable<UnderlyingType>>;
+  auto operator()(const UnderlyingType& value) const -> FuzzyValue<UnderlyingType>;
+  auto operator()(const CrispValuesUnion& value) const -> FuzzyValue<UnderlyingType>;
   auto operator==(const FuzzyVariable& other) const -> bool;
   auto operator==(std::string_view name) const -> bool;
   auto operator<(const FuzzyVariable& other) const -> bool;
@@ -62,16 +63,16 @@ public:
 
 private:
   std::string name;
-  fuzzyrulesml::mfunct::LinearDistribution distribution;
+  fuzzyrulesml::mfunct::LinearDistribution<UNDERLYING_TYPE> distribution;
 };
 
-template <typename VARIABLE> class FuzzyValue {
+template <typename UnderlyingType> class FuzzyValue {
 public:
   FuzzyValue(const Membership& membership) : membership(membership) {}
   auto get_membership() const -> Membership { return membership; }
 
 private:
-  typename VARIABLE::UnderlyingType value;
+  typename FuzzyVariable<UnderlyingType>::UnderlyingType value;
   Membership membership;
 
   // ...
@@ -80,15 +81,15 @@ private:
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // IMPLEMENTATION
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-inline auto make_linear_distribution(const initial_distribution::Uniform& distribution) {
+template <typename UNDERLYING_TYPE>
+inline auto make_linear_distribution(const initial_distribution::Uniform<UNDERLYING_TYPE>& distribution) {
   const auto number_of_internal_functions = distribution.get_categories() - 2;
   const auto section_length = (distribution.get_max() - distribution.get_min()) / (distribution.get_categories() - 1);
   const auto left =
       fuzzyrulesml::mfunct::LinearMemberFunctDesc{distribution.get_min(), distribution.get_min() + section_length};
   const auto right =
       fuzzyrulesml::mfunct::LinearMemberFunctAsc(distribution.get_max() - section_length, distribution.get_max());
-  std::vector<fuzzyrulesml::mfunct::LinearMemberFunct> functions;
+  std::vector<fuzzyrulesml::mfunct::LinearMemberFunct<UNDERLYING_TYPE>> functions;
   for (int i = 0; i < number_of_internal_functions; i++) {
     functions.push_back(fuzzyrulesml::mfunct::LinearMemberFunct{distribution.get_min() + i * section_length,
                                                                 distribution.get_min() + (i + 1) * section_length,
@@ -101,48 +102,54 @@ inline auto make_linear_distribution(const initial_distribution::Uniform& distri
 };
 
 template <typename UNDERLYING_TYPE>
-FuzzyVariable<UNDERLYING_TYPE>::FuzzyVariable(std::string_view name, const initial_distribution::Uniform& distribution)
+FuzzyVariable<UNDERLYING_TYPE>::FuzzyVariable(std::string_view name, const initial_distribution::Uniform<UNDERLYING_TYPE>& distribution)
     : name(name), distribution(make_linear_distribution(distribution)){};
 
 template <typename UNDERLYING_TYPE>
 auto FuzzyVariable<UNDERLYING_TYPE>::operator()(const UnderlyingType& value) const
-    -> FuzzyValue<FuzzyVariable<UNDERLYING_TYPE>> {
-  return FuzzyValue<FuzzyVariable<UNDERLYING_TYPE>>(this->distribution(value));
+    -> FuzzyValue<UNDERLYING_TYPE> {
+  return FuzzyValue<UNDERLYING_TYPE>(this->distribution(value));
 }
 
 template <>
-inline auto FuzzyVariable<std::string>::operator()(const UnderlyingType&) const -> FuzzyValue<FuzzyVariable<std::string>> {
-  return FuzzyValue<FuzzyVariable<std::string>>({});
+inline auto
+FuzzyVariable<int>::operator()(const UnderlyingType&) const -> FuzzyValue<int> {
+  return FuzzyValue<int>({});
 }
 
 template <typename UNDERLYING_TYPE>
-auto FuzzyVariable<UNDERLYING_TYPE>::operator()(const CrispValuesU& value) const
-    -> FuzzyValue<FuzzyVariable<UNDERLYING_TYPE>> {
+auto FuzzyVariable<UNDERLYING_TYPE>::operator()(const CrispValuesUnion& value) const
+    -> FuzzyValue<UNDERLYING_TYPE> {
   const auto decoded_value = std::get<UNDERLYING_TYPE>(value);
   return this->operator()(decoded_value);
 }
 
-template <typename UNDERLYING_TYPE> auto FuzzyVariable<UNDERLYING_TYPE>::operator==(const FuzzyVariable& other) const -> bool {
+template <typename UNDERLYING_TYPE>
+auto FuzzyVariable<UNDERLYING_TYPE>::operator==(const FuzzyVariable& other) const -> bool {
   return this->name == other.name;
 }
 
-template <typename UNDERLYING_TYPE> auto FuzzyVariable<UNDERLYING_TYPE>::operator==(std::string_view name) const -> bool {
+template <typename UNDERLYING_TYPE>
+auto FuzzyVariable<UNDERLYING_TYPE>::operator==(std::string_view name) const -> bool {
   return this->name == name;
 }
 
-template <typename UNDERLYING_TYPE> auto FuzzyVariable<UNDERLYING_TYPE>::operator<(const FuzzyVariable& other) const -> bool {
+template <typename UNDERLYING_TYPE>
+auto FuzzyVariable<UNDERLYING_TYPE>::operator<(const FuzzyVariable& other) const -> bool {
   return this->name < other.name;
 }
 
 template <typename UNDERLYING_TYPE>
-auto FuzzyVariable<UNDERLYING_TYPE>::operator=(const FuzzyVariable<UNDERLYING_TYPE>& other) -> FuzzyVariable<UNDERLYING_TYPE>& {
+auto FuzzyVariable<UNDERLYING_TYPE>::operator=(const FuzzyVariable<UNDERLYING_TYPE>& other)
+    -> FuzzyVariable<UNDERLYING_TYPE>& {
   if (this != &other) {
     name = other.name;
   }
   return *this;
 }
 template <typename UNDERLYING_TYPE>
-auto FuzzyVariable<UNDERLYING_TYPE>::operator=(FuzzyVariable<UNDERLYING_TYPE>&& other) noexcept -> FuzzyVariable<UNDERLYING_TYPE>& {
+auto FuzzyVariable<UNDERLYING_TYPE>::operator=(FuzzyVariable<UNDERLYING_TYPE>&& other) noexcept
+    -> FuzzyVariable<UNDERLYING_TYPE>& {
   if (this != &other) {
     name = std::move(other.name);
   }

@@ -51,9 +51,9 @@ public:
   //                                                                                 };
 
 private:
-  auto evaluate_rule(const std::map<fuzzyrulesml::rules::FuzzyVariableU, std::size_t>& rule_variables,
+  auto evaluate_rule(const std::map<fuzzyrulesml::rules::FuzzyVarUnion, std::size_t>& rule_variables,
                      const fuzzyrulesml::rules::RuleTestingValues& variables_map) -> double {
-    std::map<std::pair<fuzzyrulesml::rules::FuzzyVariableU, std::size_t>, double> rule_memberships{};
+    std::map<std::pair<fuzzyrulesml::rules::FuzzyVarUnion, std::size_t>, double> rule_memberships{};
     for (const auto& variable : rule_variables) {
       rule_memberships[variable] = 0.0;
     }

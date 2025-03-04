@@ -7,16 +7,16 @@
 #include <vector>
 
 namespace fuzzyrulesml::mfunct {
-class LinearMemberFunct {
+template <typename VARIABLE> class LinearMemberFunct {
 public:
-  LinearMemberFunct(double left_bound, double peak, double right_bound)
+  LinearMemberFunct(VARIABLE left_bound, VARIABLE peak, VARIABLE right_bound)
       : left_bound(left_bound), peak(peak), right_bound(right_bound) {
     if (left_bound >= peak || peak >= right_bound) {
       throw std::runtime_error("Invalid bounds");
     }
   }
 
-  auto operator()(double value) const -> std::optional<double> {
+  auto operator()(VARIABLE value) const -> std::optional<VARIABLE> {
     if (value <= left_bound || value >= right_bound) {
       return std::nullopt;
     }
@@ -28,102 +28,102 @@ public:
     }
     return (right_bound - value) / (right_bound - peak);
   }
-  auto get_left_bound() const -> double { return left_bound; }
-  auto get_peak() const -> double { return peak; }
-  auto get_right_bound() const -> double { return right_bound; }
+  auto get_left_bound() const -> VARIABLE { return left_bound; }
+  auto get_peak() const -> VARIABLE { return peak; }
+  auto get_right_bound() const -> VARIABLE { return right_bound; }
 
-  auto get_points() const -> std::vector<double> { return {left_bound, peak, right_bound}; }
-  void set_points(const double left_bound, const double peak, const double right_bound) {
+  auto get_points() const -> std::vector<VARIABLE> { return {left_bound, peak, right_bound}; }
+  void set_points(const VARIABLE left_bound, const VARIABLE peak, const VARIABLE right_bound) {
     this->left_bound = left_bound;
     this->peak = peak;
     this->right_bound = right_bound;
   }
 
 private:
-  double left_bound;
-  double peak;
-  double right_bound;
+  VARIABLE left_bound;
+  VARIABLE peak;
+  VARIABLE right_bound;
 };
 
-class LinearMemberFunctAsc {
+template <typename VARIABLE> class LinearMemberFunctAsc {
 public:
-  LinearMemberFunctAsc(double left_bound, double right_bound) : left_bound(left_bound), right_bound(right_bound) {
+  LinearMemberFunctAsc(VARIABLE left_bound, VARIABLE right_bound) : left_bound(left_bound), right_bound(right_bound) {
     if (left_bound >= right_bound) {
       throw std::runtime_error("Invalid bounds");
     }
   }
 
-  auto operator()(double value) const -> std::optional<double> {
+  auto operator()(VARIABLE value) const -> std::optional<VARIABLE> {
     if (value <= left_bound || value > right_bound) {
       return std::nullopt;
     }
     return (value - left_bound) / (right_bound - left_bound);
   }
-  auto get_points() const -> std::vector<double> { return {left_bound, right_bound}; }
-  void set_points(const double left_bound, const double right_bound) {
+  auto get_points() const -> std::vector<VARIABLE> { return {left_bound, right_bound}; }
+  void set_points(const VARIABLE left_bound, const VARIABLE right_bound) {
     this->left_bound = left_bound;
     this->right_bound = right_bound;
   }
 
 private:
-  double left_bound;
-  double right_bound;
+  VARIABLE left_bound;
+  VARIABLE right_bound;
 };
 
-class LinearMemberFunctDesc {
+template <typename VARIABLE> class LinearMemberFunctDesc {
 public:
-  LinearMemberFunctDesc(double left_bound, double right_bound) : left_bound(left_bound), right_bound(right_bound) {
+  LinearMemberFunctDesc(VARIABLE left_bound, VARIABLE right_bound) : left_bound(left_bound), right_bound(right_bound) {
     if (left_bound >= right_bound) {
       throw std::runtime_error("Invalid bounds");
     }
   }
 
-  auto operator()(double value) const -> std::optional<double> {
+  auto operator()(VARIABLE value) const -> std::optional<VARIABLE> {
     if (value < left_bound || value >= right_bound) {
       return std::nullopt;
     }
     return (right_bound - value) / (right_bound - left_bound);
   }
 
-  auto get_points() const -> std::vector<double> { return {left_bound, right_bound}; }
+  [[nodiscard]] auto get_points() const -> std::vector<VARIABLE> { return {left_bound, right_bound}; }
   void set_points(const double left_bound, const double right_bound) {
     this->left_bound = left_bound;
     this->right_bound = right_bound;
   }
 
 private:
-  double left_bound;
-  double right_bound;
+  VARIABLE left_bound;
+  VARIABLE right_bound;
 };
 
-class LinearDistribution {
+template <typename VARIABLE> class LinearDistribution {
 public:
-  LinearDistribution(const LinearMemberFunctDesc& lfunction, const std::vector<LinearMemberFunct>& functions,
-                     const LinearMemberFunctAsc& rfunction)
+  LinearDistribution(const LinearMemberFunctDesc<VARIABLE>& lfunction, const std::vector<LinearMemberFunct<VARIABLE>>& functions,
+                     const LinearMemberFunctAsc<VARIABLE>& rfunction)
       : left_function{lfunction}, mid_functions(functions), right_function{rfunction} {}
 
-  auto operator()(double value) const -> std::map<int, double> {
+  auto operator()(VARIABLE value) const -> std::map<int, double> {
     std::map<int, double> memberships;
     const auto left_boundary = left_function.get_points()[0];
     if (value < left_boundary) {
       memberships[0] = 1.0;
       return memberships;
     }
-    
+
     if (left_function(value)) {
       memberships[0] = left_function(value).value();
     }
     int index = 1;
-    memberships =
-        std::accumulate(mid_functions.begin(), mid_functions.end(), memberships,
-                        [&value, &index](std::map<int, double> memberships, const LinearMemberFunct& function) {
-                          if (function(value)) {
-                            memberships[index++] = function(value).value();
-                          } else {
-                            ++index;
-                          }
-                          return memberships;
-                        });
+    memberships = std::accumulate(
+        mid_functions.begin(), mid_functions.end(), memberships,
+        [&value, &index](std::map<int, double> memberships, const LinearMemberFunct<VARIABLE>& function) {
+          if (function(value)) {
+            memberships[index++] = function(value).value();
+          } else {
+            ++index;
+          }
+          return memberships;
+        });
     if (right_function(value)) {
       memberships[mid_functions.size() + 1] = right_function(value).value();
     }
@@ -156,8 +156,8 @@ public:
   }
 
 private:
-  LinearMemberFunctDesc left_function;
-  std::vector<LinearMemberFunct> mid_functions;
-  LinearMemberFunctAsc right_function;
+  LinearMemberFunctDesc<VARIABLE> left_function;
+  std::vector<LinearMemberFunct<VARIABLE>> mid_functions;
+  LinearMemberFunctAsc<VARIABLE> right_function;
 };
 }; // namespace fuzzyrulesml::mfunct

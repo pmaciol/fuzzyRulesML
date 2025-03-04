@@ -18,29 +18,23 @@ const int setosa = 0;
 const int versicolor = 1;
 const int virginica = 2;
 
+namespace {
 auto get_rules_set(std::vector<double> v1) {
   fru::RulesSet rules_set;
   if (v1.empty()) {
-    auto sepal_length =
-        rules_set.add_input_variable<double>("sepal_length", fru::initial_distribution::Uniform(4.3, 7.9, 2));
-    auto sepal_width =
-        rules_set.add_input_variable<double>("sepal_width", fru::initial_distribution::Uniform(2.0, 4.4, 2));
-    auto petal_length =
-        rules_set.add_input_variable<double>("petal_length", fru::initial_distribution::Uniform(1.0, 6.9, 2));
-    auto petal_width =
-        rules_set.add_input_variable<double>("petal_width", fru::initial_distribution::Uniform(0.1, 2.5, 2));
+    auto sepal_length = rules_set.add_input_variable("sepal_length", fru::initial_distribution::Uniform(4.3, 7.9, 2));
+    auto sepal_width = rules_set.add_input_variable("sepal_width", fru::initial_distribution::Uniform(2.0, 4.4, 2));
+    auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(1.0, 6.9, 2));
+    auto petal_width = rules_set.add_input_variable("petal_width", fru::initial_distribution::Uniform(0.1, 2.5, 2));
     return std::tuple{rules_set, sepal_length, sepal_width, petal_length, petal_width};
   };
-  auto sepal_length =
-      rules_set.add_input_variable<double>("sepal_length", fru::initial_distribution::Uniform(v1[0], v1[1], 2));
-  auto sepal_width =
-      rules_set.add_input_variable<double>("sepal_width", fru::initial_distribution::Uniform(v1[2], v1[3], 2));
-  auto petal_length =
-      rules_set.add_input_variable<double>("petal_length", fru::initial_distribution::Uniform(v1[4], v1[5], 2));
-  auto petal_width =
-      rules_set.add_input_variable<double>("petal_width", fru::initial_distribution::Uniform(v1[6], v1[7], 2));
+  auto sepal_length = rules_set.add_input_variable("sepal_length", fru::initial_distribution::Uniform(v1[0], v1[1], 2));
+  auto sepal_width = rules_set.add_input_variable("sepal_width", fru::initial_distribution::Uniform(v1[2], v1[3], 2));
+  auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(v1[4], v1[5], 2));
+  auto petal_width = rules_set.add_input_variable("petal_width", fru::initial_distribution::Uniform(v1[6], v1[7], 2));
   return std::tuple{rules_set, sepal_length, sepal_width, petal_length, petal_width};
 }
+} // namespace
 
 auto main(int argc, char **argv) -> int {
   CLI::App app{"App description"};
@@ -97,7 +91,6 @@ auto main(int argc, char **argv) -> int {
 
   if (!train) {
     fdd::DataSet data_set(features, targets);
-    // const auto test_data = data_set.get_items(sepal_length, sepal_width, petal_length, petal_width);
     const auto test_data =
         data_set.get_items(std::pair{"sepal length", sepal_length}, std::pair{"sepal width", sepal_width},
                            std::pair{"petal length", petal_length}, std::pair{"petal width", petal_width});
@@ -114,10 +107,10 @@ auto main(int argc, char **argv) -> int {
     auto dataset_opt_fn = [sepal_length, sepal_width, petal_length, petal_width, &reasoner, &data_set, lower_bounds,
                            upper_bounds, print](const Eigen::VectorXd local_vals_inp, Eigen::VectorXd *, void *) {
       auto local_reasoner = reasoner;
-      sepal_length.set_points(std::vector<double>{local_vals_inp(0), local_vals_inp(1)});
-      sepal_width.set_points(std::vector<double>{local_vals_inp(2), local_vals_inp(3)});
-      petal_length.set_points(std::vector<double>{local_vals_inp(4), local_vals_inp(5)});
-      petal_width.set_points(std::vector<double>{local_vals_inp(6), local_vals_inp(7)});
+      sepal_length.set_points({local_vals_inp(0), local_vals_inp(1)});
+      sepal_width.set_points({local_vals_inp(2), local_vals_inp(3)});
+      petal_length.set_points({local_vals_inp(4), local_vals_inp(5)});
+      petal_width.set_points({local_vals_inp(6), local_vals_inp(7)});
 
       const auto test_data =
           data_set.get_items(std::pair{"sepal length", sepal_length}, std::pair{"sepal width", sepal_width},
