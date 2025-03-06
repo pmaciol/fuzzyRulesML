@@ -2,7 +2,7 @@ from ucimlrepo import fetch_ucirepo
 from sklearn.model_selection import train_test_split
 
 # fetch dataset 
-print("Fetching data from UCI repository...")
+print("Fetching Iris dataset...")
 iris = fetch_ucirepo(id=53)
 
 # data (as pandas dataframes) 

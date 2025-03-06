@@ -38,7 +38,7 @@ target_include_directories(fuzzyRulesML PUBLIC
 )
 target_link_libraries(fuzzyRulesML optim)
 
-add_executable(fuzzyRulesML_tests ${TEST_SRC})
+add_executable(fuzzyRulesML_tests ${TEST_SRC} ${LIB_SRC})
 target_link_libraries(fuzzyRulesML_tests GTest::gtest GTest::gtest_main)
 target_include_directories(fuzzyRulesML_tests PUBLIC
 ${CMAKE_SOURCE_DIR}/lib/ /usr/include/eigen3/ ~/src/fuzzyRulesML/lib/
