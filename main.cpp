@@ -65,8 +65,7 @@ auto main(int argc, char **argv) -> int {
     rules_set.add_rule({{sepal_length, sepal_lenght_val},
                         {sepal_width, sepal_width_val},
                         {petal_length, petal_length_val},
-                        {petal_width, petal_width_val}},
-                       output_variable[output_val]);
+                        {petal_width, petal_width_val}}, {"iris_type",output_variable.second[output_val]});
   };
 
   add_rule(small, small, small, small, setosa);     // 1

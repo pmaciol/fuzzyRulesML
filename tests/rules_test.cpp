@@ -110,8 +110,9 @@ TEST(RuleSetsAddOutput, add_output_variable) {
   const auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(0.0, 10.0, 5));
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
-  EXPECT_EQ(output_variable.size(), 3);
-  EXPECT_EQ(output_variable[0], "Setosa");
+  EXPECT_EQ(output_variable.first, "iris_type");
+  EXPECT_EQ(output_variable.second.size(), 3);
+  EXPECT_EQ(output_variable.second[0], "Setosa");
 }
 
 TEST(RuleSetsAddOutput, add_simple_rule) {
@@ -119,7 +120,7 @@ TEST(RuleSetsAddOutput, add_simple_rule) {
   const auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(0.0, 10.0, 5));
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
-  const std::vector<fru::Rule> rules{{{{petal_length, 0}}, output_variable[0]}};
+  const std::vector<fru::Rule> rules{{{{petal_length, 0}}, {"iris_type", "Setosa"}}};
   const auto filtered_rules = fru::get_matching_rules(rules, {{petal_length, 0}});
   EXPECT_EQ(filtered_rules.size(), 1);
   const auto empty_filtered_rules = fru::get_matching_rules(rules, {{petal_length, 1}});
@@ -133,8 +134,8 @@ TEST(RuleSetsAddOutput, add_double_rule) {
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
 
-  const std::vector<fru::Rule> rules{{{{petal_length, 0}, {petal_width, 0}}, output_variable[0]},
-                                     {{{petal_length, 1}, {petal_width, 1}}, output_variable[1]}};
+  const std::vector<fru::Rule> rules{{{{petal_length, 0}, {petal_width, 0}}, {"iris_type", "Setosa"}},
+                                     {{{petal_length, 1}, {petal_width, 1}}, {"iris_type", "Versicolor"}}};
 
   EXPECT_EQ(fru::get_matching_rules(rules, {{petal_length, 0}}).size(), 0);
   EXPECT_EQ(fru::get_matching_rules(rules, {{petal_length, 1}}).size(), 0);
@@ -153,7 +154,7 @@ TEST(RuleSetsAddOutput, add_simple_valued_rule) {
   const auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(0.0, 10.0, 5));
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
-  rules_set.add_rule({{petal_length, 0}}, output_variable[0]);
+  rules_set.add_rule({{petal_length, 0}}, {"iris_type", "Setosa"});
   const auto filtered_rules = rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}});
   EXPECT_EQ(filtered_rules.size(), 1);
   const auto empty_filtered_rules = rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{5.0}}});
@@ -166,8 +167,8 @@ TEST(RuleSetsAddOutput, add_double_valued_rule) {
   const auto petal_width = rules_set.add_input_variable("petal_width", fru::initial_distribution::Uniform(0.0, 10.0, 5));
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
-  rules_set.add_rule({{petal_length, 0}, {petal_width, 0}}, output_variable[0]);
-  rules_set.add_rule({{petal_length, 1}, {petal_width, 1}}, output_variable[1]);
+  rules_set.add_rule({{petal_length, 0}, {petal_width, 0}}, {"iris_type", "Setosa"});
+  rules_set.add_rule({{petal_length, 1}, {petal_width, 1}}, {"iris_type", "Versicolor"});
   EXPECT_EQ(rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}}).size(), 0);
   EXPECT_EQ(rules_set
                 .get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}},
