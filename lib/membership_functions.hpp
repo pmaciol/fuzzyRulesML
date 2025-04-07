@@ -102,8 +102,8 @@ public:
                      const LinearMemberFunctAsc<VARIABLE>& rfunction)
       : left_function{lfunction}, mid_functions(functions), right_function{rfunction} {}
 
-  auto operator()(VARIABLE value) const -> std::map<int, double> {
-    std::map<int, double> memberships;
+  auto operator()(VARIABLE value) const -> std::map<std::size_t, double> {
+    std::map<std::size_t, double> memberships;
     const auto left_boundary = left_function.get_points()[0];
     if (value < left_boundary) {
       memberships[0] = 1.0;
@@ -116,7 +116,7 @@ public:
     int index = 1;
     memberships = std::accumulate(
         mid_functions.begin(), mid_functions.end(), memberships,
-        [&value, &index](std::map<int, double> memberships, const LinearMemberFunct<VARIABLE>& function) {
+        [&value, &index](std::map<std::size_t, double> memberships, const LinearMemberFunct<VARIABLE>& function) {
           if (function(value)) {
             memberships[index++] = function(value).value();
           } else {

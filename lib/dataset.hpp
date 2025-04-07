@@ -35,20 +35,17 @@ public:
     return to_ret;
   }
 
-  template <typename... Targs>
-  auto get_internal_items(auto item, auto variable_name_itself,
-                          Targs... Fargs)
-  {
+  template <typename... Targs> auto get_internal_items(auto item, auto variable_name_itself, Targs... Fargs) {
     const auto [name, variable] = variable_name_itself;
     auto partial_map = get_internal_items(item, Fargs...);
-    partial_map.emplace(variable, item.at(name));
+    partial_map.add(variable, item.at(name));
     return partial_map;
   };
 
-  auto get_internal_items(auto item, auto variable_name_itself)
-  {
+  auto get_internal_items(auto item, auto variable_name_itself) {
     const auto [name, variable] = variable_name_itself;
-    return fuzzyrulesml::rules::RuleTestingValues{{variable, item.at(name)}};
+    return fuzzyrulesml::rules::RuleTestingValues{fuzzyrulesml::rules::FuzzyVarUnion{variable},
+                                                  fuzzyrulesml::rules::CrispValuesUnion{item.at(name)}};
   };
 
   template <typename... Targs> auto get_items(Targs... Fargs) {

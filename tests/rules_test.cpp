@@ -110,9 +110,9 @@ TEST(RuleSetsAddOutput, add_output_variable) {
   const auto petal_length = rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(0.0, 10.0, 5));
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
-  EXPECT_EQ(output_variable.first, "iris_type");
-  EXPECT_EQ(output_variable.second.size(), 3);
-  EXPECT_EQ(output_variable.second[0], "Setosa");
+  EXPECT_EQ(output_variable.get_name(), "iris_type");
+  EXPECT_EQ(output_variable.get_categories().size(), 3);
+  EXPECT_EQ(output_variable.get_categories()[0], "Setosa");
 }
 
 TEST(RuleSetsAddOutput, add_simple_rule) {
@@ -155,9 +155,13 @@ TEST(RuleSetsAddOutput, add_simple_valued_rule) {
   const auto iris_type = std::vector<std::string>{"Setosa", "Versicolor", "Virginica"};
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
   rules_set.add_rule({{petal_length, 0}}, {"iris_type", "Setosa"});
-  const auto filtered_rules = rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}});
+  const auto filtered_rules =
+      rules_set.get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+          {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}}));
   EXPECT_EQ(filtered_rules.size(), 1);
-  const auto empty_filtered_rules = rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{5.0}}});
+  const auto empty_filtered_rules =
+      rules_set.get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+          {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{5.0}}}));
   EXPECT_EQ(empty_filtered_rules.size(), 0);
 }
 
@@ -169,25 +173,33 @@ TEST(RuleSetsAddOutput, add_double_valued_rule) {
   const auto output_variable = rules_set.add_output_variable("iris_type", iris_type);
   rules_set.add_rule({{petal_length, 0}, {petal_width, 0}}, {"iris_type", "Setosa"});
   rules_set.add_rule({{petal_length, 1}, {petal_width, 1}}, {"iris_type", "Versicolor"});
-  EXPECT_EQ(rules_set.get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}}).size(), 0);
   EXPECT_EQ(rules_set
-                .get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}},
-                            {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{0.0}}})
-                .size(),
-            1);
-  EXPECT_EQ(rules_set
-                .get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{1.0}},
-                            {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{1.0}}})
-                .size(),
-            2);
-  EXPECT_EQ(rules_set
-                .get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{9.0}},
-                            {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{9.0}}})
+                .get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+                    {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}}}))
                 .size(),
             0);
   EXPECT_EQ(rules_set
-                .get_rules({{fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}},
-                            {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{9.0}}})
+                .get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+                    {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}},
+                    {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{0.0}}}))
+                .size(),
+            1);
+  EXPECT_EQ(rules_set
+                .get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+                    {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{1.0}},
+                    {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{1.0}}}))
+                .size(),
+            2);
+  EXPECT_EQ(rules_set
+                .get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+                    {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{9.0}},
+                    {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{9.0}}}))
+                .size(),
+            0);
+  EXPECT_EQ(rules_set
+                .get_rules(fru::RuleTestingValues(std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>{
+                    {fru::FuzzyVarUnion{petal_length}, fru::CrispValuesUnion{0.0}},
+                    {fru::FuzzyVarUnion{petal_width}, fru::CrispValuesUnion{9.0}}}))
                 .size(),
             0);
 }

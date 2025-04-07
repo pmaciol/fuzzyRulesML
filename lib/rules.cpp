@@ -16,7 +16,8 @@ auto to_string(const FuzzyVarUnion& variable_container) -> std::string {
 }
 
 auto get_matching_rules(const auto rules, const std::multimap<FuzzyVarUnion, std::size_t>& variables_map) -> std::vector<Rule> {
-  return rules | std::views::filter([&variables_map](const auto& rule) { return all_variables_match(variables_map, rule.first); }) |
+  return rules |
+         std::views::filter([&variables_map](const auto& rule) { return all_variables_match(variables_map, rule.get_preconditions()); }) |
          std::ranges::to<std::vector<Rule>>();
 }
 
@@ -32,20 +33,19 @@ void RulesSet::add_rule(const std::map<FuzzyVarUnion, std::size_t>& variables_ma
   if (not std::ranges::all_of(variables_map | std::views::keys,
                               [this](const auto& variable) { return input_variables.contains(variable); }))
     throw std::runtime_error("Input variable not found");
-  ;
 
-  const auto found = output_variables.find(conclusion.first);
+  const auto found = output_variables.find(conclusion.name);
   if (found == output_variables.end()) {
     throw std::runtime_error("Output variable not found");
   };
-  const auto internal_found = std::ranges::find(found->second, conclusion.second);
+  const auto internal_found = std::ranges::find(found->second, conclusion.item);
   if (internal_found == found->second.end()) {
     throw std::runtime_error("Conclusion item not found");
   }
-  rules.emplace_back(std::pair{variables_map, conclusion});
+  rules.emplace_back(variables_map, conclusion);
 }
 
-auto RulesSet::get_rules(const std::map<FuzzyVarUnion, CrispValuesUnion>& variables_map) -> std::vector<Rule> {
+auto RulesSet::get_rules(const RuleTestingValues& variables_map) -> std::vector<Rule> {
   std::multimap<FuzzyVarUnion, std::size_t> output_map;
   for (const auto& variable : variables_map) {
     const Membership memberships =
@@ -64,4 +64,30 @@ auto RulesSet::get_input_variables_labels() const -> std::vector<std::string> {
          std::ranges::to<std::vector<std::string>>();
 };
 
+auto Rule::get_preconditions() const -> std::map<FuzzyVarMembership::first_type, FuzzyVarMembership::second_type> { return preconditions; }
+
+auto Rule::get_conclusion() const -> ConclusionChosen { return conclusion; }
+
+auto Conclusion::get_name() const -> std::string { return name; }
+
+auto Conclusion::get_categories() const -> std::vector<ConclusionItem> { return categories; }
+
+void RuleTestingValues::add(const fuzzyrulesml::rules::FuzzyVarUnion& fuzzy_value,
+                            const fuzzyrulesml::rules::CrispValuesUnion& crisp_value) {
+  crisp_values.emplace(fuzzy_value, crisp_value);
+}
+
+bool ConclusionChosen::operator<(const ConclusionChosen& other) const {
+  if (name != other.name) {
+    return name < other.name; // Compare by name first
+  }
+  return item < other.item; // If names are equal, compare by item
+}
+
+bool FuzzyVarMembership::operator<(const FuzzyVarMembership& other) const {
+  if (fuzzy_variable != other.fuzzy_variable) {
+    return fuzzy_variable < other.fuzzy_variable; // Compare by name first
+  }
+  return membership_index < other.membership_index; // If names are equal, compare by item
+};
 } // namespace fuzzyrulesml::rules

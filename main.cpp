@@ -65,7 +65,7 @@ auto main(int argc, char **argv) -> int {
     rules_set.add_rule({{sepal_length, sepal_lenght_val},
                         {sepal_width, sepal_width_val},
                         {petal_length, petal_length_val},
-                        {petal_width, petal_width_val}}, {"iris_type",output_variable.second[output_val]});
+                        {petal_width, petal_width_val}}, {"iris_type",output_variable.get_categories()[output_val]});
   };
 
   add_rule(small, small, small, small, setosa);     // 1
@@ -136,6 +136,10 @@ auto main(int argc, char **argv) -> int {
                    opt_target, goal_func, local_vals_inp(0), local_vals_inp(1), local_vals_inp(2), local_vals_inp(3),
                    local_vals_inp(4), local_vals_inp(5), local_vals_inp(6), local_vals_inp(7));
         gfunc = opt_target;
+        if(opt_target <= 3.1) {
+          std::print("Computations finished\n");
+          exit(0);
+        }
       }
       return opt_target;
     };
