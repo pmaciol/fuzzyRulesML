@@ -12,30 +12,30 @@ auto calculate_one(const auto test_data, auto& reasoner, const auto print) {
   if (print) {
     std::print("------------------------- Printing all results -------------------------\n");
   }
-  [[maybe_unused]] auto i = 1;
+  [[maybe_unused]] auto item = 1;
   for (const auto& [state, results] : test_data) {
     const auto reasoning_result = reasoner.do_reasoning(state);
-    const auto biggest_val = std::ranges::max_element(reasoning_result, [](const auto& x, const auto& y) { return x.second < y.second; });
+    const auto biggest_val =
+        std::ranges::max_element(reasoning_result, [](const auto& l_item, const auto& r_item) { return l_item.second < r_item.second; });
 
     if (print) {
-      std::print("[{}]\t Match: {:6}\t Expected: {:20}\t inferred: {}\n", i++, results == biggest_val->first.item, results,
+      std::print("[{}]\t Match: {:6}\t Expected: {:20}\t inferred: {}\n", item++, results == biggest_val->first.item, results,
                  biggest_val->first.item);
     }
     if (results == biggest_val->first.item) {
       goal_func += 1.0;
     }
   }
-  if (print)
+  if (print) {
     std::print("------------------------- End of results -------------------------\n");
+  }
   return goal_func;
 }
 
-auto get_membership(const auto fuzzy_variable, const auto crisp_value) {
-  return std::visit([crisp_value](const auto& var) { return var(crisp_value).get_membership(); }, fuzzy_variable);
-}
+auto get_membership(const auto fuzzy_variable, const auto crisp_value) { return fuzzy_variable.get_membership(crisp_value); }
 
 void set_rule_membership_value(auto& rule_memberships, const auto fuzzy_variable, const auto membership) {
-  const fuzzyrulesml::rules::FuzzyVarMembership fvmem {fuzzy_variable, membership.first};
+  const fuzzyrulesml::rules::FuzzyVarMembership fvmem{fuzzy_variable, membership.first};
   const auto found = rule_memberships.find(fvmem);
   if (found != rule_memberships.end()) {
     found->second = membership.second;
@@ -45,8 +45,8 @@ void set_rule_membership_value(auto& rule_memberships, const auto fuzzy_variable
 class SimpleReasoner {
 public:
   SimpleReasoner(const fuzzyrulesml::rules::RulesSet& rules) : stored_rules{rules} {};
-  auto
-  do_reasoning(const fuzzyrulesml::rules::RuleTestingValues& variables_map) -> std::map<fuzzyrulesml::rules::ConclusionChosen, double> {
+  [[nodiscard]] auto do_reasoning(const fuzzyrulesml::rules::RuleTestingValues& variables_map) const
+      -> std::map<fuzzyrulesml::rules::ConclusionChosen, double> {
     const auto usefeul_rules = stored_rules.get_rules(variables_map);
     std::multimap<fuzzyrulesml::rules::ConclusionChosen, double> conclusions;
     for (const auto& rule : usefeul_rules) {
@@ -59,12 +59,10 @@ public:
                            });
   }
 
-  //                                                                                 };
-
 private:
-  auto evaluate_rule(const std::map<typename fuzzyrulesml::rules::FuzzyVarMembership::first_type,
-                                    typename fuzzyrulesml::rules::FuzzyVarMembership::second_type>& rule_variables,
-                     const fuzzyrulesml::rules::RuleTestingValues& crisp_values_for_rule_variables) -> double {
+  [[nodiscard]] static auto evaluate_rule(const std::map<typename fuzzyrulesml::rules::FuzzyVarMembership::first_type,
+                                                         typename fuzzyrulesml::rules::FuzzyVarMembership::second_type>& rule_variables,
+                                          const fuzzyrulesml::rules::RuleTestingValues& crisp_values_for_rule_variables) -> double {
     std::map<fuzzyrulesml::rules::FuzzyVarMembership, double> rule_memberships{};
     for (const auto& [fuzzy_variable, member_funct] : rule_variables) {
       rule_memberships[fuzzyrulesml::rules::FuzzyVarMembership(fuzzy_variable, member_funct)] = 0.0;

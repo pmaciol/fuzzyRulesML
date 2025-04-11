@@ -9,9 +9,52 @@
 
 namespace fuzzyrulesml::dataset {
 class DataSet {
+private:
+  class RulesValuesContainer {
+  public:
+    void add(const fuzzyrulesml::rules::RuleTestingValues& rule_testing_values, const std::string& target) {
+      data.emplace_back(rule_testing_values, target);
+    }
+    [[nodiscard]] auto size() const { return data.size(); }
+    [[nodiscard]] auto begin() const { return data.begin(); }
+    [[nodiscard]] auto end() const { return data.end(); }
+    void print() const {
+      std::print("------------------------- Printing dataset -------------------------\n");
+      auto iter = 1;
+      for (const auto& [external_key, external_value] : data) {
+        std::print("[{}]\t", iter++);
+        for (const auto& [key, value] : external_key) {
+          std::print("{}: {:4}\t", key.to_string(), value.to_string());
+        }
+        std::print("{}\n", external_value);
+      }
+      std::print("-------------------------   End of dataset -------------------------\n");
+    }
+
+  private:
+    std::vector<std::pair<fuzzyrulesml::rules::RuleTestingValues, std::string>> data;
+  };
+
+  class DatasetFeatures {
+  public:
+    using internal_type = std::map<std::string, double>;
+    DatasetFeatures(const internal_type& data) : data(data) {}
+    DatasetFeatures(internal_type&& data) : data(std::move(data)) {}
+    [[nodiscard]] auto begin() const { return data.begin(); }
+    [[nodiscard]] auto end() const { return data.end(); }
+    [[nodiscard]] auto at(const std::string& key) const -> double {
+      auto iter = data.find(key);
+      if (iter != data.end()) {
+        return iter->second;
+      }
+      throw std::out_of_range("Key not found in DatasetFeatures");
+    }
+
+  private:
+    std::map<std::string, double> data;
+  };
+
 public:
-  using RulesValuesContainer = std::vector<std::pair<fuzzyrulesml::rules::RuleTestingValues, std::string>>;
-  using DatasetFeatures = std::map<std::string, double>;
   using DatasetTarget = std::string;
   using DatasetItem = std::pair<DatasetFeatures, DatasetTarget>;
 
@@ -19,11 +62,11 @@ public:
     for (auto [x_item, y_item] : std::ranges::views::zip(x_data.items(), y_data.items())) {
       const nlohmann::json x_object = x_item.value();
       const nlohmann::json y_object = y_item.value();
-      data.emplace_back(x_object.get<DatasetFeatures>(), y_object.at("class").get<DatasetTarget>());
+      data.emplace_back(x_object.get<typename DatasetFeatures::internal_type>(), y_object.at("class").get<DatasetTarget>());
     }
   };
 
-  auto get_variables_names() const {
+  [[nodiscard]] auto get_variables_names() const {
     std::vector<std::string> to_ret;
     for (const auto& [x, y] : data) {
       for (const auto& [key, value] : x) {
@@ -52,7 +95,7 @@ public:
     RulesValuesContainer to_ret;
     for (const auto& [item, y] : data) {
       auto rule_testing_values = get_internal_items(item, Fargs...);
-      to_ret.emplace_back(rule_testing_values, y);
+      to_ret.add(rule_testing_values, y);
     }
     return to_ret;
   };
@@ -61,29 +104,6 @@ private:
   std::vector<DatasetItem> data;
 };
 
-void print(const DataSet::RulesValuesContainer& data) {
-  std::print("------------------------- Printing dataset -------------------------\n");
-  auto i = 1;
-  for (const auto& [x, y] : data) {
-    std::print("[{}]\t", i++);
-    for (const auto& [key, value] : x) {
-      std::print("{}: {:4}\t", fuzzyrulesml::rules::to_string(key), fuzzyrulesml::rules::to_string(value));
-    }
-    std::print("{}\n", y);
-  }
-  std::print("-------------------------   End of dataset -------------------------\n");
-}
-
-auto load_data(const std::string& input_file, const std::string& target_file) {
-  nlohmann::json features_test, targets_test;
-  std::ifstream ifs;
-  ifs.open(input_file, std::ifstream::in);
-  ifs >> features_test;
-  ifs.close();
-  ifs.open(target_file, std::ifstream::in);
-  ifs >> targets_test;
-  ifs.close();
-  return std::pair{features_test, targets_test};
-}
+auto load_data(const std::string& input_file, const std::string& target_file) -> std::pair<nlohmann::json, nlohmann::json>;
 
 } // namespace fuzzyrulesml::dataset
