@@ -5,6 +5,11 @@
 #include "gtest/gtest.h"
 namespace fru = fuzzyrulesml::rules;
 
+namespace fuzzyrulesml::rules {
+  auto get_matching_rules(auto rules, const std::multimap<FuzzyVarUnion, std::size_t>& variables_map) -> std::vector<Rule>;
+}
+
+
 TEST(RuleSetsVariables, add_input) {
   fru::RulesSet rules_set;
   rules_set.add_input_variable("petal_length", fru::initial_distribution::Uniform(0.0, 10.0, 4));

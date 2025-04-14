@@ -60,8 +60,8 @@ public:
   }
 
 private:
-  [[nodiscard]] static auto evaluate_rule(const std::map<typename fuzzyrulesml::rules::FuzzyVarMembership::first_type,
-                                                         typename fuzzyrulesml::rules::FuzzyVarMembership::second_type>& rule_variables,
+  [[nodiscard]] static auto evaluate_rule(const std::map<typename fuzzyrulesml::rules::FuzzyVarMembership::MembershipKey,
+                                                         typename fuzzyrulesml::rules::FuzzyVarMembership::MembershipIndex>& rule_variables,
                                           const fuzzyrulesml::rules::RuleTestingValues& crisp_values_for_rule_variables) -> double {
     std::map<fuzzyrulesml::rules::FuzzyVarMembership, double> rule_memberships{};
     for (const auto& [fuzzy_variable, member_funct] : rule_variables) {

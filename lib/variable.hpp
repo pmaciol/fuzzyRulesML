@@ -32,7 +32,6 @@ public:
   using UnderlyingType = UNDERLYING_TYPE;
   Uniform(UnderlyingType min, UnderlyingType max, std::size_t categories) : min(min), max(max), categories(categories) {}
   [[nodiscard]] auto get_categories() const -> std::size_t { return categories; }
-  // auto get_membership(double value) const -> std::map<int, double> { return std::map<int, double>{{0, 1.0}}; }
   [[nodiscard]] auto get_min() const -> UnderlyingType { return min; }
   [[nodiscard]] auto get_max() const -> UnderlyingType { return max; }
 
@@ -49,8 +48,8 @@ public:
   using UnderlyingType = UNDERLYING_TYPE;
   FuzzyVariable(std::string_view name, const initial_distribution::Uniform<UnderlyingType>& distribution);
   ~FuzzyVariable() = default;
-  FuzzyVariable(const FuzzyVariable& other) : name(other.name), distribution{other.distribution} {}
-  FuzzyVariable(FuzzyVariable&& other) noexcept : name(std::move(other.name)), distribution(std::move(other.distribution)) {}
+  FuzzyVariable(const FuzzyVariable& other) = default;
+  FuzzyVariable(FuzzyVariable&& other) noexcept = default;
 
   [[nodiscard]] auto operator=(const FuzzyVariable& other) -> FuzzyVariable&;
   [[nodiscard]] auto operator=(FuzzyVariable&& other) noexcept -> FuzzyVariable&;
@@ -80,8 +79,6 @@ public:
 private:
   typename FuzzyVariable<UnderlyingType>::UnderlyingType value;
   Membership membership;
-
-  // ...
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

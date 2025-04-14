@@ -6,6 +6,7 @@
 #include <print>
 #include <ranges>
 #include <vector>
+#include <algorithm>
 
 namespace fuzzyrulesml::dataset {
 class DataSet {
@@ -37,9 +38,9 @@ private:
 
   class DatasetFeatures {
   public:
-    using internal_type = std::map<std::string, double>;
-    DatasetFeatures(const internal_type& data) : data(data) {}
-    DatasetFeatures(internal_type&& data) : data(std::move(data)) {}
+    using InternalStorage = std::map<std::string, double>;
+    DatasetFeatures(const InternalStorage& data) : data(data) {}
+    DatasetFeatures(InternalStorage&& data) : data(std::move(data)) {}
     [[nodiscard]] auto begin() const { return data.begin(); }
     [[nodiscard]] auto end() const { return data.end(); }
     [[nodiscard]] auto at(const std::string& key) const -> double {
@@ -56,27 +57,9 @@ private:
 
 public:
   using DatasetTarget = std::string;
-  using DatasetItem = std::pair<DatasetFeatures, DatasetTarget>;
 
-  DataSet(nlohmann::json x_data, nlohmann::json y_data) {
-    for (auto [x_item, y_item] : std::ranges::views::zip(x_data.items(), y_data.items())) {
-      const nlohmann::json x_object = x_item.value();
-      const nlohmann::json y_object = y_item.value();
-      data.emplace_back(x_object.get<typename DatasetFeatures::internal_type>(), y_object.at("class").get<DatasetTarget>());
-    }
-  };
-
-  [[nodiscard]] auto get_variables_names() const {
-    std::vector<std::string> to_ret;
-    for (const auto& [x, y] : data) {
-      for (const auto& [key, value] : x) {
-        if (std::ranges::find(to_ret, key) == to_ret.end()) {
-          to_ret.push_back(key);
-        }
-      }
-    }
-    return to_ret;
-  }
+  DataSet(nlohmann::json x_data, nlohmann::json y_data);
+  [[nodiscard]] auto get_variables_names() const -> std::vector<std::string>;
 
   template <typename... Targs> auto get_internal_items(auto item, auto variable_name_itself, Targs... Fargs) {
     const auto [name, variable] = variable_name_itself;
@@ -85,7 +68,7 @@ public:
     return partial_map;
   };
 
-  auto get_internal_items(auto item, auto variable_name_itself) {
+  auto get_internal_items(auto item, auto variable_name_itself) -> fuzzyrulesml::rules::RuleTestingValues {
     const auto [name, variable] = variable_name_itself;
     return fuzzyrulesml::rules::RuleTestingValues{fuzzyrulesml::rules::FuzzyVarUnion{variable},
                                                   fuzzyrulesml::rules::CrispValuesUnion{item.at(name)}};
@@ -93,15 +76,15 @@ public:
 
   template <typename... Targs> auto get_items(Targs... Fargs) {
     RulesValuesContainer to_ret;
-    for (const auto& [item, y] : data) {
+    for (const auto& [item, target] : data) {
       auto rule_testing_values = get_internal_items(item, Fargs...);
-      to_ret.add(rule_testing_values, y);
+      to_ret.add(rule_testing_values, target);
     }
     return to_ret;
   };
 
 private:
-  std::vector<DatasetItem> data;
+  std::vector<std::pair<DatasetFeatures, DatasetTarget>> data;
 };
 
 auto load_data(const std::string& input_file, const std::string& target_file) -> std::pair<nlohmann::json, nlohmann::json>;

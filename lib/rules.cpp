@@ -59,7 +59,9 @@ auto RulesSet::get_input_variables_labels() const -> std::vector<std::string> {
          std::ranges::to<std::vector<std::string>>();
 };
 
-auto Rule::get_preconditions() const -> std::map<FuzzyVarMembership::first_type, FuzzyVarMembership::second_type> { return preconditions; }
+auto Rule::get_preconditions() const -> std::map<FuzzyVarMembership::MembershipKey, FuzzyVarMembership::MembershipIndex> {
+  return preconditions;
+}
 
 auto Rule::get_conclusion() const -> ConclusionChosen { return conclusion; }
 
@@ -91,4 +93,19 @@ auto FuzzyVarMembership::operator<(const FuzzyVarMembership& other) const -> boo
   }
   return membership_index < other.membership_index; // If names are equal, compare by item
 };
+
+auto FuzzyVarUnion::operator<(const FuzzyVarUnion& other) const -> bool {
+  return this->payload.index() < other.payload.index() ||
+         (this->payload.index() == other.payload.index() &&
+          std::visit([](const auto& lhs, const auto& rhs) { return lhs.compare(rhs); }, this->payload, other.payload));
+};
+
+auto FuzzyVarUnion::operator==(const FuzzyVarUnion& other) const -> bool { return this->payload == other.payload; }
+
+auto FuzzyVarUnion::to_string() const -> std::string {
+  return std::visit([](const auto& var) { return var.get_name(); }, this->payload);
+}
+auto FuzzyVarUnion::get_name() const -> std::string {
+  return std::visit([](const auto& var) { return var.get_name(); }, this->payload);
+}
 } // namespace fuzzyrulesml::rules

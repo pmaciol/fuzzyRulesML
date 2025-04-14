@@ -21,26 +21,19 @@ using ConclusionItem = std::string;
 class FuzzyVarUnion {
 public:
   template <typename VARIABLE_TYPE> FuzzyVarUnion(const FuzzyVariable<VARIABLE_TYPE>& variable) : payload(variable){};
+  template <typename VARIABLE_TYPE> FuzzyVarUnion(FuzzyVariable<VARIABLE_TYPE>&& variable) : payload(std::move(variable)){};
   [[nodiscard]] auto get_membership(const auto val) const -> Membership {
     return std::visit([val](const auto& var) { return var.operator()(val).get_membership(); }, this->payload);
   }
-  [[nodiscard]] auto operator<(const FuzzyVarUnion& other) const -> bool {
-    return this->payload.index() < other.payload.index() ||
-           (this->payload.index() == other.payload.index() &&
-            std::visit([](const auto& lhs, const auto& rhs) { return lhs.compare(rhs); }, this->payload, other.payload));
-  }
-  [[nodiscard]] auto operator==(const FuzzyVarUnion& other) const -> bool { return this->payload == other.payload; }
-
-  [[nodiscard]] auto to_string() const -> std::string {
-    return std::visit([](const auto& var) { return var.get_name(); }, this->payload);
-  }
-  [[nodiscard]] auto get_name() const -> std::string {
-    return std::visit([](const auto& var) { return var.get_name(); }, this->payload);
-  }
+  [[nodiscard]] auto operator<(const FuzzyVarUnion& other) const -> bool;
+  [[nodiscard]] auto operator==(const FuzzyVarUnion& other) const -> bool;
+  [[nodiscard]] auto to_string() const -> std::string;
+  [[nodiscard]] auto get_name() const -> std::string;
 
 private:
   std::variant<FuzzyVariable<double>, FuzzyVariable<int>> payload;
 };
+
 class Conclusion {
 public:
   Conclusion(const std::string_view name, const std::vector<ConclusionItem>& categories) : name{name}, categories{categories} {};
@@ -56,35 +49,34 @@ private:
 struct ConclusionChosen {
   std::string name;
   ConclusionItem item;
-
   auto operator<(const ConclusionChosen& other) const -> bool;
 };
-// Rule is a pair of the preconditions and the conclusion; size_t is an index of the membership function
 
 struct FuzzyVarMembership {
-  using first_type = FuzzyVarUnion;
-  using second_type = std::size_t;
+  using MembershipKey = FuzzyVarUnion;
+  using MembershipIndex = std::size_t;
   FuzzyVarMembership(const FuzzyVarUnion& fuzzy_variable, std::size_t membership_index)
       : fuzzy_variable{fuzzy_variable}, membership_index{membership_index} {};
-  FuzzyVarUnion fuzzy_variable;
+  MembershipKey fuzzy_variable;
   std::size_t membership_index;
   auto operator<(const FuzzyVarMembership& other) const -> bool;
 };
 
 class Rule {
 public:
-  Rule(const std::map<FuzzyVarMembership::first_type, FuzzyVarMembership::second_type>& preconditions, const ConclusionChosen& conclusion)
+  Rule(const std::map<FuzzyVarMembership::MembershipKey, FuzzyVarMembership::MembershipIndex>& preconditions,
+       const ConclusionChosen& conclusion)
       : preconditions{preconditions}, conclusion{conclusion} {};
-  [[nodiscard]] auto get_preconditions() const -> std::map<FuzzyVarMembership::first_type, FuzzyVarMembership::second_type>;
+  [[nodiscard]] auto get_preconditions() const -> std::map<FuzzyVarMembership::MembershipKey, FuzzyVarMembership::MembershipIndex>;
   [[nodiscard]] auto get_conclusion() const -> ConclusionChosen;
 
 private:
-  std::map<FuzzyVarMembership::first_type, FuzzyVarMembership::second_type> preconditions;
+  std::map<FuzzyVarMembership::MembershipKey, FuzzyVarMembership::MembershipIndex> preconditions;
   ConclusionChosen conclusion;
 };
+
 // RuleTestingValues is a map of the fuzzy variables and their crisp values; it is used as an input for evaluation of
 // the rule
-
 class RuleTestingValues {
 public:
   RuleTestingValues(const std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion>& crisp_values)
@@ -108,11 +100,6 @@ public:
 private:
   std::map<fuzzyrulesml::rules::FuzzyVarUnion, fuzzyrulesml::rules::CrispValuesUnion> crisp_values;
 };
-
-auto all_variables_match(const std::multimap<FuzzyVarUnion, std::size_t>& variables_map,
-                         const std::map<FuzzyVarUnion, std::size_t>& preconditions) -> bool;
-
-auto get_matching_rules(auto rules, const std::multimap<FuzzyVarUnion, std::size_t>& variables_map) -> std::vector<Rule>;
 
 class RulesSet {
 public:
