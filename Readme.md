@@ -54,4 +54,4 @@ If you would like to contribute in any way, I would suggest to contatct me to di
 ## License
 
 This project is licensed under the [GNU Lesser General Public License v2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) - see the
-[LICENSE](LICENSE) file for details
+[LICENSE](LICENSE.md) file for details
